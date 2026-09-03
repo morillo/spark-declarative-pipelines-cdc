@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+jars/
+pipeline/pipeline-storage/
+pipeline/spark-warehouse/
+pipeline/metastore_db/
+pipeline/derby.log
+pipeline/run.log
+pipeline/spark-pipeline.yml

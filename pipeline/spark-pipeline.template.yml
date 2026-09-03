@@ -1,0 +1,5 @@
+name: mongo_cdc_local
+storage: file://__REPO_ROOT__/pipeline/pipeline-storage
+libraries:
+  - glob:
+      include: transformations/**
