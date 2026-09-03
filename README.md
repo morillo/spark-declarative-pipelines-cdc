@@ -111,11 +111,16 @@ ls pipeline/pipeline-storage/
 
 # Ad-hoc SQL against the tables (Delta confs come from
 # spark-defaults.conf, so a plain session can read everything)
-export SPARK_HOME="$(.venv/bin/python -c 'import pyspark, os; print(os.path.dirname(pyspark.__file__))')"
-.venv/bin/pyspark
+./shell.sh
 >>> df = spark.read.format("delta").load("pipeline/spark-warehouse/customers_silver")
 >>> df.selectExpr("_id", "doc:name::string", "doc:address.city::string").show()
 ```
+
+Note: do **not** use the `.venv/bin/pyspark` shell script — the pip
+4.2.0 distribution's launcher fails its connect-mode probe
+(`ModuleNotFoundError: No module named 'pyspark.util'`, then no
+`spark` variable). `./shell.sh` starts a plain `python -i` session
+with `SPARK_HOME` set and a ready `spark` SparkSession instead.
 
 `./inspect.sh` automates this: row counts per Debezium `op`, the
 current-state table, the typed projection, and four PASS/FAIL checks
