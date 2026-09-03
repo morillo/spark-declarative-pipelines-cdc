@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Run the pipeline with the spark-pipelines CLI. Any extra arguments
-# are passed through, e.g.:  ./run.sh dry-run
+# Run the pipeline with the distribution's spark-pipelines CLI.
+# Extra arguments pass through, e.g.:  ./run.sh dry-run
 set -euo pipefail
 cd "$(dirname "$0")"
 
-export SPARK_HOME="$(.venv/bin/python -c 'import pyspark, os; print(os.path.dirname(pyspark.__file__))')"
+export SPARK_HOME="$PWD/spark"
 export PYSPARK_PYTHON="$PWD/.venv/bin/python"
 export PYSPARK_DRIVER_PYTHON="$PWD/.venv/bin/python"
 
@@ -14,4 +14,4 @@ sed "s|__REPO_ROOT__|$PWD|" pipeline/spark-pipeline.template.yml \
   > pipeline/spark-pipeline.yml
 
 cd pipeline
-exec "../.venv/bin/spark-pipelines" "${1:-run}" --spec spark-pipeline.yml "${@:2}"
+exec "$SPARK_HOME/bin/spark-pipelines" "${1:-run}" --spec spark-pipeline.yml "${@:2}"
