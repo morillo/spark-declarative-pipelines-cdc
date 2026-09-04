@@ -8,5 +8,6 @@ pipeline/metastore_db/
 pipeline/derby.log
 pipeline/*.log
 pipeline/spark-pipeline.yml
-spark/
+jars/
+conf/
 .env

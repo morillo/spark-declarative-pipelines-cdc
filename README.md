@@ -10,9 +10,10 @@ This repository is a **working, verified-on-a-laptop** Debezium
 streaming ingestion, a VARIANT-typed current-state table, and a typed
 projection view — together with an honest write-up of every version
 pin and limitation required to make it work. Verified on a MacBook Pro
-(Apple Silicon M4); everything runs natively on ARM and nothing is
-installed globally — the pinned Spark distribution, the virtualenv,
-and all state live inside this directory.
+(Apple Silicon M4); everything runs natively on ARM. Spark itself is a
+shared, version-managed install (see the prerequisite below); all
+project state — venv, Delta jars, confs, tables — stays inside this
+directory and never touches it.
 
 Companion projects (the Databricks versions this was ported from):
 [debezium-mongodb-cdc-pipeline](https://github.com/morillo/debezium-mongodb-cdc-pipeline),
@@ -20,45 +21,75 @@ Companion projects (the Databricks versions this was ported from):
 [dlt-debezium-mongodb](https://github.com/morillo/dlt-debezium-mongodb),
 [dlt-debezium-mysql](https://github.com/morillo/dlt-debezium-mysql).
 
+## Prerequisite: Apache Spark 4.2.0
+
+This project **requires the official `spark-4.2.0-bin-hadoop3`
+distribution**, installed system-wide so it coexists with any other
+Spark versions on the machine. The expected layout follows the
+version-manager convention:
+
+```
+/usr/local/spark-versions/
+├── spark-3.5.2/
+├── spark-4.1.3/
+└── spark-4.2.0/     <- required by this project
+```
+
+One-time install (immutable, pinned URL):
+
+```bash
+cd /tmp
+curl -fLO https://archive.apache.org/dist/spark/spark-4.2.0/spark-4.2.0-bin-hadoop3.tgz
+tar -xzf spark-4.2.0-bin-hadoop3.tgz
+sudo mkdir -p /usr/local/spark-versions           # if it doesn't exist
+sudo chown "$USER" /usr/local/spark-versions      # once
+mv spark-4.2.0-bin-hadoop3 /usr/local/spark-versions/spark-4.2.0
+```
+
+A different location works too — every script honors a `SPARK_HOME`
+override: `SPARK_HOME=/opt/spark-4.2.0 ./run.sh`.
+
+Also required: Java 17+ (`java -version`) and Python 3.10+ — a
+pyenv-managed interpreter works fine; plain `venv` + `pip` is all the
+Python tooling needed (no `uv` required).
+
 ## Quick start
 
 ```bash
-./setup.sh      # one-time: pinned Spark dist, venv, Delta jars, confs
+./setup.sh      # one-time: venv, Delta jars, project-local confs
 ./run.sh        # run the pipeline (or: ./run.sh dry-run to validate)
 ./inspect.sh    # dump the Delta tables and assert the CDC semantics
 ./shell.sh      # interactive PySpark shell with Delta configured
 ```
 
-Prerequisites: Java 17+ (`java -version`) and Python 3.10+ — a
-pyenv-managed interpreter works fine; plain `venv` + `pip` is all the
-Python tooling needed (no `uv` required).
+## How the shared install stays pristine
 
-## Why a pinned full distribution (not pip pyspark)
+The system Spark install is **never modified**. Everything
+project-specific is local to the repository and activated per run:
 
-`setup.sh` downloads the official `spark-4.2.0-bin-hadoop3` tarball
-from `archive.apache.org` (an immutable, pinned URL) into `./spark/`.
-The first iteration of this repo drove everything through
-`pip install pyspark` instead, and hit three problems the distribution
-route eliminates:
+- **Delta jars** (`delta-spark_2.13-4.4.0`, `delta-storage-4.4.0`)
+  are fetched by `setup.sh` into `./jars/` — not into the shared
+  `spark-4.2.0/jars/`.
+- **Confs** (`spark.jars` pointing at `./jars`, the Delta SQL
+  extension, and the Delta catalog) are written to
+  `./conf/spark-defaults.conf` and applied through
+  **`SPARK_CONF_DIR`**, Spark's supported mechanism for an external
+  conf directory. Other projects using the same Spark 4.2.0 see none
+  of it.
+- The **virtualenv** holds only the Python client dependencies the
+  CLI and Spark Connect need: `pyyaml`, `pandas`, `pyarrow`,
+  `grpcio`, `grpcio-status`, `googleapis-common-protos`, and
+  `zstandard` (Spark 4.2 requires it, but only tells you at run
+  time). There is **no pip `pyspark`** — the distribution provides
+  the library, which avoids two documented traps: pip's broken
+  4.2.0 `pyspark` shell launcher, and `delta-spark==4.2.0` silently
+  downgrading pyspark to 4.1.1 (Delta's versions do not track
+  Spark's; the Spark 4.2-compatible Delta line is **4.4.x**).
 
-1. **pip's `pyspark` shell launcher is broken** (4.2.0): its
-   connect-mode probe fails (`ModuleNotFoundError: No module named
-   'pyspark.util'`) and you land in a bare REPL with no `spark`
-   session. The distribution's `bin/pyspark` just works.
-2. **Version-coupling trap**: `delta-spark==4.2.0` targets Spark
-   **4.1** (Delta's versions do not track Spark's) and silently
-   downgrades pip pyspark to 4.1.1 — which has no
-   `create_auto_cdc_flow`. With a pinned distribution there is no pip
-   pyspark to downgrade; the matching Delta **4.4.0** jars are simply
-   placed in `spark/jars/`.
-3. **Configuration hygiene**: static confs (`spark.sql.extensions`,
-   the Delta catalog) belong in `spark/conf/spark-defaults.conf` — a
-   real conf directory, not one buried inside `site-packages`.
-
-The virtualenv holds only the Python client dependencies the CLI and
-Spark Connect need: `pyyaml`, `pandas`, `pyarrow`, `grpcio`,
-`grpcio-status`, `googleapis-common-protos`, and `zstandard` (Spark
-4.2 requires it; the error message tells you, but only at run time).
+`env.sh` (sourced by every script) is the single place these
+conventions live: `SPARK_HOME` (default
+`/usr/local/spark-versions/spark-4.2.0`, overridable),
+`SPARK_CONF_DIR`, and the venv interpreter for driver and executors.
 
 ## Exact versions
 
@@ -66,7 +97,7 @@ Spark Connect need: `pyyaml`, `pandas`, `pyarrow`, `grpcio`,
 |---|---|---|
 | Java | 17+ (21 OK) | Spark 4.x requirement. |
 | Python | 3.10–3.12 | Driver and executors use the venv interpreter. |
-| Apache Spark | **4.2.0** (`spark-4.2.0-bin-hadoop3` tarball) | First line with a usable `create_auto_cdc_flow` API; ships `bin/spark-pipelines`. |
+| Apache Spark | **4.2.0** (`spark-4.2.0-bin-hadoop3`, shared install) | First line with a usable `create_auto_cdc_flow` API; ships `bin/spark-pipelines`. |
 | Delta Lake jars | **4.4.0** | The Spark 4.2-compatible line (4.2.x targets Spark 4.1). |
 | Python client deps | latest | See list above; `zstandard>=0.25` is mandatory. |
 
@@ -140,7 +171,7 @@ ls pipeline/pipeline-storage/
 >>> df.selectExpr("_id", "doc:name::string", "doc:address.city::string").show()
 
 # Or plain SQL
-./spark/bin/spark-sql -e "SELECT count(*) FROM delta.\`$PWD/pipeline/spark-warehouse/customers_bronze\`"
+source env.sh && "$SPARK_HOME/bin/spark-sql" -e "SELECT count(*) FROM delta.\`$PWD/pipeline/spark-warehouse/customers_bronze\`"
 ```
 
 `./inspect.sh` automates this via `spark-submit`: row counts per
@@ -154,9 +185,10 @@ tiebreak by oplog `ord`, non-ObjectId `_id` handled).
    VS Code (`code .`).
 2. **Interpreter**: `⇧⌘P` → *Python: Select Interpreter* → choose
    `.venv/bin/python`. `setup.sh` also wrote a `.env` file pointing
-   `PYTHONPATH` at `spark/python`, which the Python extension reads
-   automatically — so Pylance resolves `pyspark.pipelines` from the
-   pinned distribution and you get IntelliSense/go-to-definition in
+   `PYTHONPATH` at the shared install's `python/` directory, which the
+   Python extension reads automatically — so Pylance resolves
+   `pyspark.pipelines` from Spark 4.2.0 and you get
+   IntelliSense/go-to-definition in
    `pipeline/transformations/mongo_cdc.py` without pip-installing
    pyspark.
 3. **Run**: integrated terminal (`` ⌃` ``): `./run.sh dry-run` for a
@@ -201,9 +233,10 @@ tiebreak by oplog `ord`, non-ObjectId `_id` handled).
 
 ```
 spark-declarative-pipelines-cdc/
-├── setup.sh                       # pinned Spark dist + venv + jars + confs
+├── setup.sh                       # venv + Delta jars + project confs
+├── env.sh                         # SPARK_HOME / SPARK_CONF_DIR conventions
 ├── run.sh                         # render spec, launch spark-pipelines
-├── shell.sh                       # distribution bin/pyspark, Delta ready
+├── shell.sh                       # shared install's bin/pyspark, Delta ready
 ├── inspect.sh / inspect_tables.py # dump tables, assert CDC semantics
 └── pipeline/
     ├── spark-pipeline.template.yml# spec template (storage path token)
@@ -213,8 +246,9 @@ spark-declarative-pipelines-cdc/
         └── mongodb.shopdb.customers/  # sample Debezium events
 ```
 
-`spark/`, `.venv/`, `.env`, and all pipeline state are created by the
-scripts and gitignored.
+`jars/`, `conf/`, `.venv/`, `.env`, and all pipeline state are created
+by the scripts and gitignored; the shared Spark install is read-only
+to this project.
 
 The sample events cover snapshot reads, an insert, a full-document
 update, a pre-image delete, a same-millisecond update+delete pair

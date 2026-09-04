@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
-# Run the pipeline with the distribution's spark-pipelines CLI.
+# Run the pipeline with spark-pipelines from the shared Spark install.
 # Extra arguments pass through, e.g.:  ./run.sh dry-run
 set -euo pipefail
 cd "$(dirname "$0")"
-
-export SPARK_HOME="$PWD/spark"
-export PYSPARK_PYTHON="$PWD/.venv/bin/python"
-export PYSPARK_DRIVER_PYTHON="$PWD/.venv/bin/python"
+source ./env.sh
 
 # The spec's storage root must be an absolute file:// URI, so the
 # committed template is rendered with this checkout's path.
