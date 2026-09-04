@@ -16,4 +16,4 @@ jobs:
       - name: Lint
         run: pipx run ruff check --line-length 79 pipeline/transformations inspect_tables.py
       - name: Shell script check
-        run: bash -n setup.sh run.sh inspect.sh shell.sh env.sh
+        run: bash -n setup.sh run.sh inspect.sh shell.sh env.sh clean.sh

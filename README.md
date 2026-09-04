@@ -133,10 +133,15 @@ Everything below was discovered by running, not by reading docs.
   renders the committed template with the checkout's absolute path.
 - `PYSPARK_PYTHON` must point at the venv interpreter so the CLI and
   executors use the environment with the client dependencies.
-- Stale `spark-warehouse/` from a failed run blocks re-creation
-  (`DELTA_CREATE_TABLE_WITH_NON_EMPTY_LOCATION`); remove
-  `pipeline/spark-warehouse`, `pipeline/metastore_db`, and
-  `pipeline/pipeline-storage` for a clean slate.
+- Stale `spark-warehouse/` from a failed or pre-upgrade run blocks
+  re-creation (`DELTA_CREATE_TABLE_WITH_NON_EMPTY_LOCATION`); run
+  `./clean.sh` for a clean slate (it removes local pipeline state
+  only — code and sample events are untouched).
+- A `CANNOT_MODIFY_STATIC_CONFIG: "spark.sql.extensions"` warning at
+  session creation is **expected and harmless**: the Spark Connect
+  client redundantly re-applies `spark-defaults.conf` per session and
+  static confs cannot be set there — the server JVM already loaded
+  them at launch, which is what matters.
 
 ## Inspecting everything by hand
 
@@ -227,6 +232,7 @@ spark-declarative-pipelines-cdc/
 ├── run.sh                         # render spec, launch spark-pipelines
 ├── shell.sh                       # shared install's bin/pyspark, Delta ready
 ├── inspect.sh / inspect_tables.py # dump tables, assert CDC semantics
+├── clean.sh                       # wipe local pipeline state
 └── pipeline/
     ├── spark-pipeline.template.yml# spec template (storage path token)
     ├── transformations/
