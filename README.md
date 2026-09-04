@@ -24,30 +24,19 @@ Companion projects (the Databricks versions this was ported from):
 ## Prerequisite: Apache Spark 4.2.0
 
 This project **requires the official `spark-4.2.0-bin-hadoop3`
-distribution**, installed system-wide so it coexists with any other
-Spark versions on the machine. The expected layout follows the
-version-manager convention:
-
-```
-/usr/local/spark-versions/
-├── spark-3.5.2/
-├── spark-4.1.3/
-└── spark-4.2.0/     <- required by this project
-```
-
-One-time install (immutable, pinned URL):
+distribution**, installed wherever you keep Spark versions. One-time
+install (immutable, pinned URL):
 
 ```bash
-cd /tmp
 curl -fLO https://archive.apache.org/dist/spark/spark-4.2.0/spark-4.2.0-bin-hadoop3.tgz
 tar -xzf spark-4.2.0-bin-hadoop3.tgz
-sudo mkdir -p /usr/local/spark-versions           # if it doesn't exist
-sudo chown "$USER" /usr/local/spark-versions      # once
-mv spark-4.2.0-bin-hadoop3 /usr/local/spark-versions/spark-4.2.0
+mv spark-4.2.0-bin-hadoop3 <your spark versions directory>/spark-4.2.0
 ```
 
-A different location works too — every script honors a `SPARK_HOME`
-override: `SPARK_HOME=/opt/spark-4.2.0 ./run.sh`.
+The scripts default to `/usr/local/spark-versions/spark-4.2.0` and
+every one honors a `SPARK_HOME` override for any other location:
+`SPARK_HOME=/opt/spark-4.2.0 ./run.sh`. This install can coexist with
+any other Spark versions; the project never modifies it.
 
 Also required: Java 17+ (`java -version`) and Python 3.10+ — a
 pyenv-managed interpreter works fine; plain `venv` + `pip` is all the
