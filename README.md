@@ -38,14 +38,14 @@ every one honors a `SPARK_HOME` override for any other location:
 `SPARK_HOME=/opt/spark-4.2.0 ./run.sh`. This install can coexist with
 any other Spark versions; the project never modifies it.
 
-Also required: Java 17+ (`java -version`) and Python 3.10+ — a
-pyenv-managed interpreter works fine; plain `venv` + `pip` is all the
-Python tooling needed (no `uv` required).
+Also required: Java 17+ (`java -version`) and [uv](https://docs.astral.sh/uv/),
+which installs the pinned Python (`.python-version`, 3.12) and the locked
+client dependencies (`uv.lock`). Setup: `uv sync` (run by `setup.sh`).
 
 ## Quick start
 
 ```bash
-./setup.sh      # one-time: venv, Delta jars, project-local confs
+./setup.sh      # one-time: uv sync (.venv), Delta jars, project-local confs
 ./run.sh        # run the pipeline (or: ./run.sh dry-run to validate)
 ./inspect.sh    # dump the Delta tables and assert the CDC semantics
 ./shell.sh      # interactive PySpark shell with Delta configured
@@ -65,7 +65,7 @@ project-specific is local to the repository and activated per run:
   **`SPARK_CONF_DIR`**, Spark's supported mechanism for an external
   conf directory. Other projects using the same Spark 4.2.0 see none
   of it.
-- The **virtualenv** holds only the Python client dependencies the
+- The **`.venv`** (created by `uv sync` from `uv.lock`) holds only the Python client dependencies the
   CLI and Spark Connect need: `pyyaml`, `pandas`, `pyarrow`,
   `grpcio`, `grpcio-status`, `googleapis-common-protos`, and
   `zstandard` (Spark 4.2 requires it, but only tells you at run
@@ -85,10 +85,10 @@ conventions live: `SPARK_HOME` (default
 | Component | Version | Notes |
 |---|---|---|
 | Java | 17+ (21 OK) | Spark 4.x requirement. |
-| Python | 3.10–3.12 | Driver and executors use the venv interpreter. |
+| Python | 3.12 (pinned in `.python-version`; 3.10–3.12 supported) | Driver and executors use the `.venv` interpreter. |
 | Apache Spark | **4.2.0** (`spark-4.2.0-bin-hadoop3`, shared install) | First line with a usable `create_auto_cdc_flow` API; ships `bin/spark-pipelines`. |
 | Delta Lake jars | **4.4.0** | The Spark 4.2-compatible line (4.2.x targets Spark 4.1). |
-| Python client deps | latest | See list above; `zstandard>=0.25` is mandatory. |
+| Python client deps | locked in `uv.lock` | See list above; `zstandard>=0.25` is mandatory. |
 
 ## Findings: what is (and is not) in OSS SDP
 
@@ -227,7 +227,8 @@ tiebreak by oplog `ord`, non-ObjectId `_id` handled).
 
 ```
 spark-declarative-pipelines-cdc/
-├── setup.sh                       # venv + Delta jars + project confs
+├── setup.sh                       # uv sync + Delta jars + project confs
+├── pyproject.toml / uv.lock       # Python client deps (uv)
 ├── env.sh                         # SPARK_HOME / SPARK_CONF_DIR conventions
 ├── run.sh                         # render spec, launch spark-pipelines
 ├── shell.sh                       # shared install's bin/pyspark, Delta ready

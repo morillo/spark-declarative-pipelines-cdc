@@ -1,0 +1,18 @@
+[project]
+name = "spark-declarative-pipelines-cdc"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "googleapis-common-protos>=1.75.5",
+    "grpcio>=1.84.0",
+    "grpcio-status>=1.84.0",
+    "pandas>=2.3.3",
+    "pyarrow>=25.0.1",
+    "pyyaml>=6.0.3",
+    "zstandard>=0.25",
+]
+
+[tool.uv]
+# Not a package: `uv sync` only installs the Spark Connect client dependencies.
+# pyspark itself comes from the shared Spark install (see README).
+package = false

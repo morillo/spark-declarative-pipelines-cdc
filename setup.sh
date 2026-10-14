@@ -18,11 +18,9 @@ if [ ! -x "$SPARK_HOME/bin/spark-pipelines" ]; then
 fi
 echo "==> Using Spark at $SPARK_HOME"
 
-echo "==> Creating virtualenv with the Python client dependencies"
-python3 -m venv .venv
-.venv/bin/pip install --quiet \
-  pyyaml pandas pyarrow grpcio grpcio-status googleapis-common-protos \
-  zstandard
+echo "==> Creating .venv with the Python client dependencies (uv sync)"
+# uv installs the Python pinned in .python-version and the deps locked in uv.lock
+uv sync --quiet
 
 echo "==> Fetching Delta Lake ${DELTA_VERSION} jars into ./jars"
 mkdir -p jars
