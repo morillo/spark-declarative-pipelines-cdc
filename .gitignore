@@ -11,3 +11,4 @@ pipeline/spark-pipeline.yml
 jars/
 conf/
 .env
+.vscode/
