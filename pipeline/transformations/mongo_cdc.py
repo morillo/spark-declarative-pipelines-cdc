@@ -18,7 +18,17 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import LongType, StringType, StructField, StructType
 
-spark = SparkSession.getActiveSession()
+
+def _active_spark() -> SparkSession:
+    session = SparkSession.getActiveSession()
+    if session is None:
+        raise RuntimeError(
+            "No active SparkSession: this file must run under spark-pipelines."
+        )
+    return session
+
+
+spark = _active_spark()
 
 EVENTS_PATH = "file://" + os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -63,7 +73,8 @@ DOC_ID_EXPR = (
 )
 
 
-@dp.table(
+# pyspark 4.2's @overload stubs omit `format=`, which the implementation accepts.
+@dp.table(  # type: ignore[call-overload]
     comment="Raw Debezium CDC events (native JSON stream).",
     format="delta",
 )
@@ -78,7 +89,7 @@ def customers_bronze():
 # nor Iceberg satisfies yet on this Spark version. The portable OSS
 # pattern is a materialized view: latest event per _id wins (sequenced
 # by ts_ms with the oplog ordinal as tiebreaker), deletes filtered out.
-@dp.materialized_view(
+@dp.materialized_view(  # type: ignore[call-overload]  # stub omits `format=`
     comment="Current state: one row per _id, document as VARIANT.",
     format="delta",
 )
@@ -103,7 +114,7 @@ def customers_silver():
     return latest.select("_id", "doc")
 
 
-@dp.materialized_view(
+@dp.materialized_view(  # type: ignore[call-overload]  # stub omits `format=`
     comment="Typed projection over the VARIANT doc.",
     format="delta",
 )
