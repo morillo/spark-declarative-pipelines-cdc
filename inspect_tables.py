@@ -38,12 +38,12 @@ print("=" * 64)
 print("CDC semantics checks")
 silver = delta("customers_silver")
 ids = {r._id for r in silver.select("_id").collect()}
-email = (
+email_row = (
     silver.where("_id = '65f1a2b3c4d5e6f7a8b9c001'")
     .selectExpr("doc:email::string AS e")
     .first()
-    .e
 )
+email = email_row.e if email_row is not None else None
 checks = [
     ("update applied (Alice has new email)", email == "alice.new@example.com"),
     ("delete applied (Carol gone)", "65f1a2b3c4d5e6f7a8b9c003" not in ids),

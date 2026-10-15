@@ -16,3 +16,13 @@ dependencies = [
 # Not a package: `uv sync` only installs the Spark Connect client dependencies.
 # pyspark itself comes from the shared Spark install (see README).
 package = false
+# The dev group (pyright + pyspark for type checking only) is NOT installed by plain
+# `uv sync`: the runtime .venv must not contain pip's pyspark (see README). Use
+# `uv sync --group dev` / `uv run --group dev pyright`.
+default-groups = []
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.414",
+    "pyspark==4.2.0",
+]
